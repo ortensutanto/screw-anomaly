@@ -16,9 +16,39 @@ def load_models():
         st.error(f"Error loading models: {str(e)}")
         return None, None
 
+def pad_values(text):
+    tempText = text
+    textCount = tempText.count(',')
+    diffComma = 83 - int(textCount)
+
+    if(diffComma > 0):
+        for i in range(0, diffComma):
+            tempText += ',0.0'
+
+    return tempText
+
+def pad_time(text):
+    tempText = text 
+    inputCount = tempText.count(',')
+    splitText = tempText.split(',')
+    diff1 = float(splitText[0])
+    diff2 = float(splitText[1])
+    diff = diff2 - diff1
+
+    diffComma = 83 - inputCount
+
+    lastTime = float(splitText[-1])
+    for i in range(0, diffComma):
+        lastTime += diff 
+        tempText = tempText + "," + str(round(lastTime, 4))
+
+    return tempText
+
 # --- Helper: Convert user input string to pd.Series ---
-def parse_input_series(time_str, value_str):
+def parse_input_series(original_time_str, original_value_str):
     try:
+        value_str = pad_values(original_value_str)
+        time_str = pad_time(original_time_str)
         time = [float(x.strip()) for x in time_str.split(',')]
         values = [float(x.strip()) for x in value_str.split(',')]
 
