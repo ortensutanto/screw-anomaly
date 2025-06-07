@@ -94,7 +94,7 @@ def encode_categorical(data):
 
 # --- Page Config ---
 st.set_page_config(page_title="Screw Classification", page_icon="🔩", layout="centered")
-st.title("🔩 Screw Classification Inference App")
+st.title("🔩 Screw Anomaly Classification App")
 
 # Load models at startup
 workpiece_torque, workpiece_full, class_torque, class_full = load_models()
