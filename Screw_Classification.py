@@ -8,7 +8,7 @@ from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import sklearn
-from pyscrew import get_data
+import pyscrew
 from sktime.utils import mlflow_sktime
 
 data = get_data(scenario="s03")
