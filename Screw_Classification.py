@@ -121,7 +121,7 @@ if workpiece_torque is None or workpiece_full is None or class_torque is None or
     st.stop()
 
 menu = ["🏠 Home",
-        "EDA" 
+        "EDA",
         "🔧 Screw Quality Prediction (Torque Data Only)", 
         "🚰 Screw Quality Prediction (Multiple Sensors)", 
         "🔧 Screw Class Prediction (Torque Data Only)", 
