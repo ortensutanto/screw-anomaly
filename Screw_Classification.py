@@ -15,7 +15,7 @@ import gdown
 df = pd.read_csv("s03.csv")
 
 DRIVE_IDS = {
-    "workpiece_torque": "1VF4dHVbQ0piNhCPjszz_Yg-u2fu3WxS4",
+    "workpiece_torque": "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof",
     "workpiece_full":   "157aTxIOveZGGMIT_v0PkLmdgsvBrAOSk",
     "class_torque":     "1VF4dHVbQ0piNhCPjszz_Yg-u2fu3WxS4",
     "class_full":       "1b4sZLxi2_TZQIxI_Xdv95AsIQ9h9LrKI",
@@ -120,7 +120,8 @@ if workpiece_torque is None or workpiece_full is None or class_torque is None or
     st.error("Failed to load models. Please check if the model files exist and are valid.")
     st.stop()
 
-menu = ["🏠 Home", 
+menu = ["🏠 Home",
+        "EDA" 
         "🔧 Screw Quality Prediction (Torque Data Only)", 
         "🚰 Screw Quality Prediction (Multiple Sensors)", 
         "🔧 Screw Class Prediction (Torque Data Only)", 
