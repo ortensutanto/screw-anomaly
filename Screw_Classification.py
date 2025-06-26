@@ -9,25 +9,34 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import sklearn
 from sktime.utils import mlflow_sktime
+import gdown
 
 
 df = pd.read_csv("s03.csv")
 
+DRIVE_IDS = {
+    "workpiece_torque": "1VF4dHVbQ0piNhCPjszz_Yg-u2fu3WxS4",
+    "workpiece_full":   "157aTxIOveZGGMIT_v0PkLmdgsvBrAOSk",
+    "class_torque":     "1VF4dHVbQ0piNhCPjszz_Yg-u2fu3WxS4",
+    "class_full":       "1b4sZLxi2_TZQIxI_Xdv95AsIQ9h9LrKI",
+}
+
+def download_and_load(drive_id, output_name):
+    url = f"https://drive.google.com/uc?id={drive_id}"
+    gdown.download(url=url, output=output_name, quiet=True)
+    with open(output_name, "rb") as f:
+        return pickle.load(f)
+
 @st.cache_resource
 def load_models():
     try:
-        with open("Torque_Single_WorkpieceResult.pkl", "rb") as f1:
-            workpiece_torque = pickle.load(f1)
-        with open("TorqueAngleGradientStep_Multi_WorkpieceResult.pkl", "rb") as f2:
-            workpiece_full = pickle.load(f2)
-        with open("Torque_Single_ClassValues.pkl", "rb") as f3:
-            class_torque = pickle.load(f3)
-        with open("TorqueAngleGradientStep_Multi_ClassValues.pkl", "rb") as f4:
-            class_full = pickle.load(f4)
-            
+        workpiece_torque = download_and_load(DRIVE_IDS["workpiece_torque"], "Torque_Single_WorkpieceResult.pkl")
+        workpiece_full   = download_and_load(DRIVE_IDS["workpiece_full"],   "TorqueAngleGradientStep_Multi_WorkpieceResult.pkl")
+        class_torque     = download_and_load(DRIVE_IDS["class_torque"],     "Torque_Single_ClassValues.pkl")
+        class_full       = download_and_load(DRIVE_IDS["class_full"],       "TorqueAngleGradientStep_Multi_ClassValues.pkl")
         return workpiece_torque, workpiece_full, class_torque, class_full
     except Exception as e:
-        st.error(f"Error loading models: {str(e)}")
+        st.error(f"Error loading models: {e}")
         return None, None, None, None
 
 def pad_values(text):
