@@ -2,7 +2,18 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
+import seaborn as sns
 from sklearn.preprocessing import LabelBinarizer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import sklearn
+from pyscrew import get_data
+from sktime.utils import mlflow_sktime
+
+data = get_data(scenario="s03")
+
+df = pd.DataFrame(data)
 
 @st.cache_resource
 def load_models():
@@ -98,8 +109,86 @@ if torque_model is None or full_model is None:
     st.error("Failed to load models. Please check if the model files exist and are valid.")
     st.stop()
 
-menu = ["🏠 Home", "🔧 Torque-Only Classification", "🚰 Custom Feature Classification"]
+menu = ["🏠 Home", "EDA", "🔧 Torque-Only Classification", "🚰 Custom Feature Classification"]
 choice = st.sidebar.radio("Choose Mode", menu)
+
+if choice == "EDA":
+    st.subheader("Exploratory Data Analysis (EDA)")
+    
+    st.markdown("### Distribution of Assembly Conditions (class_values)")
+    class_counts = df['class_values'].value_counts()
+    st.write(class_counts)
+    
+    plt.figure(figsize=(12, 8))
+    sns.barplot(x=class_counts.index, y=class_counts.values, palette="viridis")
+    plt.title('Distribution of Assembly Conditions (class_values)')
+    plt.xlabel('Class Label')
+    plt.ylabel('Number of Samples')
+    plt.xticks(rotation=90) # Rotate labels for better readability if many classes
+    plt.tight_layout()
+    st.pyplot(plt)
+    plt.clf()  # Clear the figure to prevent overlapping plots
+
+    st.markdown("### Distribution of Workpiece Result (OK/NOK)")
+    result_counts = df['workpiece_result'].value_counts()
+    st.write(result_counts)
+    
+    plt.figure(figsize=(6, 4))
+    sns.barplot(x=result_counts.index, y=result_counts.values, palette="coolwarm")
+    plt.title('Distribution of Workpiece Result (OK/NOK)')
+    plt.xlabel('Result')
+    plt.ylabel('Number of Samples')
+    st.pyplot(plt)
+    plt.clf()  # Clear the figure to prevent overlapping plots
+
+    def plot_average_signals_by_class(df_to_plot, target_class_label, num_samples_to_average=10):
+        class_df = df_to_plot[df_to_plot['class_values'] == target_class_label].head(num_samples_to_average)
+        if class_df.empty:
+            st.warning(f"No samples found for class: {target_class_label}")
+            return
+
+        # Assuming all time series are already padded/normalized to the same length by pyscrew
+        # (e.g., 1000 points for torque_values, angle_values, etc.)
+        avg_torque = np.mean(np.array(class_df['torque_values'].tolist()), axis=0)
+        avg_angle = np.mean(np.array(class_df['angle_values'].tolist()), axis=0)
+        avg_gradient = np.mean(np.array(class_df['gradient_values'].tolist()), axis=0)
+
+        # Assuming time_values are consistent for averaged signals (e.g., 0 to N-1 if normalized)
+        # Or use a representative time_values array
+        time_axis = class_df['time_values'].iloc[0] # Or np.arange(len(avg_torque))
+
+        fig, axs = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+
+        axs[0].plot(time_axis, avg_torque, label=f'Avg Torque - {target_class_label}')
+        axs[0].set_ylabel('Average Torque (Nm)')
+        axs[0].legend()
+        axs[0].grid(True)
+
+        axs[1].plot(time_axis, avg_angle, label=f'Avg Angle - {target_class_label}', color='orange')
+        axs[1].set_ylabel('Average Angle (°)')
+        axs[1].legend()
+        axs[1].grid(True)
+
+        axs[2].plot(time_axis, avg_gradient, label=f'Avg Gradient - {target_class_label}', color='green')
+        axs[2].set_ylabel('Average Gradient (Nm/°)')
+        axs[2].set_xlabel('Time Points / Normalized Time')
+        axs[2].legend()
+        axs[2].grid(True)
+
+        plt.suptitle(f"Average Signals for Class: {target_class_label} (first {num_samples_to_average} samples)")
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        st.pyplot(fig)
+        plt.close(fig)  # Close the figure to free memory
+
+    st.markdown("### Average Signals for Different Classes")
+    unique_classes = df['class_values'].unique()
+    if len(unique_classes) > 0:
+        st.markdown(f"#### Class: {unique_classes[0]}")
+        plot_average_signals_by_class(df, unique_classes[0]) # Plot average for the first class
+    if len(unique_classes) > 1:
+        st.markdown(f"#### Class: {unique_classes[1]}")
+        plot_average_signals_by_class(df, unique_classes[1]) # Plot average for the second class
+
 
 # --- Home Page ---
 if choice == "🏠 Home":
