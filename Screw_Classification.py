@@ -6,19 +6,25 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, accuracy_score
 import sklearn
 from sktime.utils import mlflow_sktime
+from sktime.classification.dictionary_based import MUSE
+import sktime
 import gdown
+import ast
 
 
 df = pd.read_csv("s03.csv")
 
 DRIVE_IDS = {
     "workpiece_torque": "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof",
-    "workpiece_full":   "157aTxIOveZGGMIT_v0PkLmdgsvBrAOSk",
-    "class_torque":     "1VF4dHVbQ0piNhCPjszz_Yg-u2fu3WxS4",
-    "class_full":       "1b4sZLxi2_TZQIxI_Xdv95AsIQ9h9LrKI",
+    "workpiece_full": "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof",
+    "class_torque":     "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof",
+    "class_full":       "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof"
+    # "workpiece_full":   "157aTxIOveZGGMIT_v0PkLmdgsvBrAOSk",
+    # "class_torque":     "1VF4dHVbQ0piNhCPjszz_Yg-u2fu3WxS4",
+    # "class_full":       "1b4sZLxi2_TZQIxI_Xdv95AsIQ9h9LrKI",
 }
 
 def download_and_load(drive_id, output_name):
@@ -66,6 +72,65 @@ def pad_time(text):
         tempText = tempText + "," + str(round(lastTime, 4))
 
     return tempText
+
+# -- TRAIN MODEL
+def load_data(uploaded_file):
+    df = pd.read_csv("s03.csv")
+    # Parse list columns
+    list_columns = ['time_values', 'torque_values', 'angle_values', 'gradient_values', 'step_values']
+    for col in list_columns:
+        df[col] = df[col].apply(ast.literal_eval)
+    return df
+
+def create_timeseries_from_row(row_data, series_column_name, index_column_name):
+    ts_data = row_data[series_column_name]
+    time_idx = row_data[index_column_name]
+    return pd.Series(data=ts_data, index=pd.Index(time_idx, name='time'))
+
+def createDataset(df, target='class_values'):
+    X = df.drop(columns=[target])
+    y = df[target]
+    return train_test_split(X, y, random_state=42, test_size=0.2)
+
+def convertToTimeSeries(X, y, torque=True, angle=True, gradient=True, step=True):
+    X_sktime = pd.DataFrame(index=X.index)
+
+    if torque:
+        torque_series_column = X.apply(lambda row: create_timeseries_from_row(row, 'torque_values', 'time_values'), axis=1)
+        X_sktime['torque'] = pd.Series(torque_series_column, index=X.index)
+    if angle:
+        angle_series_column = X.apply(lambda row: create_timeseries_from_row(row, 'angle_values', 'time_values'), axis=1)
+        X_sktime['angle'] = pd.Series(angle_series_column, index=X.index)
+
+    if gradient:
+        gradient_series_column = X.apply(lambda row: create_timeseries_from_row(row, 'gradient_values', 'time_values'), axis=1)
+        X_sktime['gradient'] = pd.Series(gradient_series_column, index=X.index)
+
+    if step:
+        step_series_column = X.apply(lambda row: create_timeseries_from_row(row, 'step_values', 'time_values'), axis=1)
+        X_sktime['step'] = pd.Series(step_series_column, index=X.index)
+
+    return X_sktime, y.to_numpy()
+
+def trainModel(X_train, X_test, y_train, y_test, modelName="trained_model"):
+    model = MUSE()
+    model.fit(X_train, y_train)
+    preds = model.predict(X_test)
+
+    acc = accuracy_score(y_test, preds)
+    cm = confusion_matrix(y_test, preds)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.unique(y_test))
+
+    fig, ax = plt.subplots()
+    disp.plot(ax=ax)
+    st.pyplot(fig)
+
+    st.success(f"Model trained with accuracy: **{acc:.2f}**")
+
+    with open(modelName + ".pkl", "wb") as f:
+        pickle.dump(model, f)
+    st.download_button("Download Model", data=open(modelName + ".pkl", "rb"), file_name=modelName + ".pkl")
+
 
 # --- Helper: Convert user input string to pd.Series ---
 def parse_input_series(original_time_str, original_value_str):
@@ -122,6 +187,7 @@ if workpiece_torque is None or workpiece_full is None or class_torque is None or
 
 menu = ["🏠 Home",
         "EDA",
+        "Train New Model",
         "🔧 Screw Quality Prediction (Torque Data Only)", 
         "🚰 Screw Quality Prediction (Multiple Sensors)", 
         "🔧 Screw Class Prediction (Torque Data Only)", 
@@ -163,16 +229,20 @@ if choice == "EDA":
             st.warning(f"No samples found for class: {target_class_label}")
             return
 
-        # Assuming all time series are already padded/normalized to the same length by pyscrew
-        # (e.g., 1000 points for torque_values, angle_values, etc.)
-        avg_torque = np.mean(np.array(class_df['torque_values'].tolist()), axis=0)
-        avg_angle = np.mean(np.array(class_df['angle_values'].tolist()), axis=0)
-        avg_gradient = np.mean(np.array(class_df['gradient_values'].tolist()), axis=0)
+        # Convert stringified lists into actual lists
+        torque_lists = class_df['torque_values'].apply(ast.literal_eval)
+        angle_lists = class_df['angle_values'].apply(ast.literal_eval)
+        gradient_lists = class_df['gradient_values'].apply(ast.literal_eval)
+        time_lists = class_df['time_values'].apply(ast.literal_eval)
 
-        # Assuming time_values are consistent for averaged signals (e.g., 0 to N-1 if normalized)
-        # Or use a representative time_values array
-        time_axis = class_df['time_values'].iloc[0] # Or np.arange(len(avg_torque))
+        # Convert to NumPy arrays and average
+        avg_torque = np.mean(torque_lists.tolist(), axis=0)
+        avg_angle = np.mean(angle_lists.tolist(), axis=0)
+        avg_gradient = np.mean(gradient_lists.tolist(), axis=0)
 
+        time_axis = time_lists.iloc[0]  # Use the first time axis
+
+        # Plot
         fig, axs = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
 
         axs[0].plot(time_axis, avg_torque, label=f'Avg Torque - {target_class_label}')
@@ -194,7 +264,7 @@ if choice == "EDA":
         plt.suptitle(f"Average Signals for Class: {target_class_label} (first {num_samples_to_average} samples)")
         plt.tight_layout(rect=[0, 0, 1, 0.96])
         st.pyplot(fig)
-        plt.close(fig)  # Close the figure to free memory
+        plt.close(fig)
 
     st.markdown("### Average Signals for Different Classes")
     unique_classes = df['class_values'].unique()
@@ -205,6 +275,32 @@ if choice == "EDA":
         st.markdown(f"#### Class: {unique_classes[1]}")
         plot_average_signals_by_class(df, unique_classes[1]) # Plot average for the second class
 
+
+if choice == "Train New Model":
+    st.title("🧠 Train MUSE Model on Screw Data")
+
+    uploaded_file = st.file_uploader("Upload your screw dataset (.csv)", type=["csv"])
+
+    if uploaded_file:
+        df = load_data(uploaded_file)
+        st.success("File loaded successfully!")
+        st.write(df.head())
+
+        target = st.selectbox("Choose target column", ["class_values", "workpiece_result"])
+
+        st.markdown("### Select signals to include:")
+        use_torque = st.checkbox("Torque", value=True)
+        use_angle = st.checkbox("Angle", value=True)
+        use_gradient = st.checkbox("Gradient", value=True)
+        use_step = st.checkbox("Step", value=True)
+
+        if st.button("🚀 Train Model"):
+            with st.spinner("Training..."):
+                XTrain, XTest, yTrain, yTest = createDataset(df, target=target)
+                XTrain_time, yTrain_label = convertToTimeSeries(XTrain, yTrain, use_torque, use_angle, use_gradient, use_step)
+                XTest_time, yTest_label = convertToTimeSeries(XTest, yTest, use_torque, use_angle, use_gradient, use_step)
+
+                trainModel(XTrain_time, XTest_time, yTrain_label, yTest_label, f"MUSE_{target}")
 
 # --- Home Page ---
 if choice == "🏠 Home":
