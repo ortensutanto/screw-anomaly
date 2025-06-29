@@ -156,9 +156,9 @@ def trainModel(X_train, X_test, y_train, y_test, modelName="trained_model"):
 
     st.success(f"Model trained with accuracy: **{acc:.2f}**")
 
-    with open(modelName + ".pkl", "wb") as f:
-        pickle.dump(model, f)
-    st.download_button("Download Model", data=open(modelName + ".pkl", "rb"), file_name=modelName + ".pkl")
+    # with open(modelName + ".pkl", "wb") as f:
+    #     pickle.dump(model, f)
+    # st.download_button("Download Model", data=open(modelName + ".pkl", "rb"), file_name=modelName + ".pkl")
 
 
 # --- Helper: Convert user input string to pd.Series ---
