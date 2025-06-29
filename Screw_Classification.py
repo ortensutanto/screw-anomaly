@@ -19,12 +19,12 @@ df = pd.read_csv("s03.csv")
 
 DRIVE_IDS = {
     "workpiece_torque": "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof",
-    "workpiece_full": "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof",
-    "class_torque":     "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof",
-    "class_full":       "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof"
-    # "workpiece_full":   "157aTxIOveZGGMIT_v0PkLmdgsvBrAOSk",
-    # "class_torque":     "1VF4dHVbQ0piNhCPjszz_Yg-u2fu3WxS4",
-    # "class_full":       "1b4sZLxi2_TZQIxI_Xdv95AsIQ9h9LrKI",
+    # "workpiece_full": "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof",
+    # "class_torque":     "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof",
+    # "class_full":       "1YBYV8KPVeQxc1afZl6KYdcRJvmkF5wof"
+    "workpiece_full":   "157aTxIOveZGGMIT_v0PkLmdgsvBrAOSk",
+    "class_torque":     "1VF4dHVbQ0piNhCPjszz_Yg-u2fu3WxS4",
+    "class_full":       "1b4sZLxi2_TZQIxI_Xdv95AsIQ9h9LrKI",
 }
 
 def download_and_load(drive_id, output_name):
